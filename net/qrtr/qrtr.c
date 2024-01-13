@@ -938,6 +938,7 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 			kfree_skb(skb);
 			return -ENODEV;
 		}
+
 		if (node->nid == 5) {
 			svc_id = qrtr_get_service_id(cb->src_node, cb->src_port);
 			if (svc_id > 0) {
@@ -949,26 +950,18 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 				}
 			}
 		}
+
 		if (sock_queue_rcv_skb(&ipc->sk, skb))
 			goto err;
 
-		/* Force wakeup for all packets except for sensors */
-		if (node->nid != 9 && node->nid != 5)
+		/**
+		 * Force wakeup for all packets except for sensors and blacklisted services
+		 * from adsp side
+		 */
+		if ((node->nid != 9 && node->nid != 5) ||
+		    (node->nid == 5 && wake))
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
-		if (node->nid == 5) {
-			svc_id = qrtr_get_service_id(cb->src_node, cb->src_port);
-			if (svc_id > 0) {
-				for (i = 0; i < MAX_NON_WAKE_SVC_LEN; i++) {
-					if (svc_id == node->nonwake_svc[i]) {
-						wake = false;
-						break;
-					}
-				}
-			}
-			if (wake)
-				pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
-		}
 		qrtr_port_put(ipc);
 	}
 
