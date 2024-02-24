@@ -233,5 +233,15 @@ source "drivers/counter/Kconfig"
 source "drivers/nothing_stability/Kconfig"
 
 source "drivers/nothing_thermal/Kconfig"
-source "drivers/kernelsu/Kconfig"
+
+menu "KernelSU"
+
+config KSU 
+	tristate "KernelSU function support" 
+	depends on OVERLAY_FS 
+	default n
+	help
+	Enable kernel-level root privileges on Android System.
+endmenu
+
 endmenu
