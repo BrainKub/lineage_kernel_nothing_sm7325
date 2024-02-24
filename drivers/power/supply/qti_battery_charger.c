@@ -2366,6 +2366,45 @@ static CLASS_ATTR_RO(batsoc);
 
 #endif
 
+#if defined(CONFIG_NT_CHG) && defined(CONFIG_STWLC38_FW) 
+static ssize_t charging_en_show(struct class *c, struct class_attribute *attr,
+				char *buf)
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+						battery_class);
+	struct psy_state *pst_usb = &bcdev->psy_list[PSY_TYPE_USB];
+	struct psy_state *pst_wls = &bcdev->psy_list[PSY_TYPE_WLS];
+	int charging_enabled;
+
+        read_property_id(bcdev, pst_usb, USB_CHARGE_ENABLE);
+	read_property_id(bcdev, pst_wls, WLS_ST38_EN);
+
+	charging_enabled = ((!!pst_usb->prop[USB_CHARGE_ENABLE]) && (!!pst_wls->prop[WLS_ST38_EN]));
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", charging_enabled);
+}
+
+static ssize_t charging_en_store(struct class *c,
+					struct class_attribute *attr,
+					const char *buf, size_t count) 
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+						battery_class);
+	u32 val;
+
+	if (kstrtou32(buf, 0, &val))
+		return -EINVAL;
+
+	pr_info("%s,val:%d", __func__, val);
+
+        write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_USB], USB_CHARGE_ENABLE, val);
+        write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_WLS], WLS_ST38_EN, val);
+
+	return count;
+}
+static CLASS_ATTR_RW(charging_en);
+#endif
+
 static struct attribute *battery_class_attrs[] = {
 	&class_attr_soh.attr,
 	&class_attr_resistance.attr,
@@ -2404,6 +2443,9 @@ static struct attribute *battery_class_attrs[] = {
 	&class_attr_syssoc.attr,
 	&class_attr_batsoc.attr,
 
+#if defined(CONFIG_NT_CHG) && defined(CONFIG_STWLC38_FW)
+        &class_attr_charging_en.attr,
+#endif
 	NULL,
 };
 ATTRIBUTE_GROUPS(battery_class);
