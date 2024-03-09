@@ -53,6 +53,7 @@
 #define WLS_FW_UPDATE_TIME_MS		1000
 #define WLS_FW_BUF_SIZE			128
 #define DEFAULT_RESTRICT_FCC_UA		1000000
+#define CONFIG_NT_CHG
 #define CONFIG_STWLC38_FW
 #define DIVIDE_1000_TIMES			1000
 #define DIVIDE_1000000_TIMES			1000000
@@ -137,11 +138,13 @@ enum usb_property_id {
 	USB_TYPEC_COMPLIANT,
 	USB_SCOPE,
 	USB_CONNECTOR_TYPE,
+#ifdef CONFIG_NT_CHG
 	USB_CHARGE_PUMP_ENABLE,
 	USB_CC_ORIENTATION,
 	USB_CHARGE_ENABLE,
 	USB_SLOWCHARGE_ENABLE,
 	USB_CHARGE_POWER,
+#endif
 	USB_PROP_MAX,
 };
 
@@ -1944,6 +1947,8 @@ static ssize_t soh_show(struct class *c, struct class_attribute *attr,
 }
 static CLASS_ATTR_RO(soh);
 
+#ifdef CONFIG_NT_CHG
+
 static ssize_t charge_pump_enable_show(struct class *c, struct class_attribute *attr,
 			char *buf)
 {
@@ -2065,6 +2070,7 @@ static ssize_t slowcharge_en_show(struct class *c, struct class_attribute *attr,
 }
 static CLASS_ATTR_RW(slowcharge_en);
 
+#endif
 
 static ssize_t ship_mode_en_store(struct class *c, struct class_attribute *attr,
 				const char *buf, size_t count)
@@ -2372,15 +2378,19 @@ static struct attribute *battery_class_attrs[] = {
 	&class_attr_wireless_fw_version.attr,
 	&class_attr_wireless_fw_crc.attr,
 	&class_attr_ship_mode_en.attr,
+#ifdef CONFIG_NT_CHG
 	&class_attr_usb_charger_en.attr,
 	&class_attr_charge_power.attr,
 	&class_attr_slowcharge_en.attr,
+#endif
 	&class_attr_restrict_chg.attr,
 	&class_attr_restrict_cur.attr,
 	&class_attr_usb_real_type.attr,
 	&class_attr_usb_typec_compliant.attr,
+#ifdef CONFIG_NT_CHG
 	&class_attr_charge_pump_enable.attr,
 	&class_attr_typec_cc_orientation.attr,
+#endif
 #ifdef CONFIG_STWLC38_FW
 	&class_attr_wls_volt_tx.attr,
 	&class_attr_wls_curr_tx.attr,
