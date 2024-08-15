@@ -37,9 +37,6 @@
 
 #define SEC_PANEL_NAME_MAX_LEN  256
 
-int rm692e5_aod_flag = 0;
-int current_refresh_rate = 120;
-
 struct dsi_display *primary_display;
 
 u8 dbgfs_tx_cmd_buf[SZ_4K];
@@ -62,6 +59,8 @@ bool is_skip_op_required(struct dsi_display *display)
 
 	return (display->is_cont_splash_enabled || display->trusted_vm_env);
 }
+
+static unsigned int cur_refresh_rate = 60;
 
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
@@ -245,13 +244,6 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		DSI_ERR("[%s] failed to enable DSI core clocks, rc=%d\n",
 		       dsi_display->name, rc);
 		goto error;
-	}
-
-	/*set TE gpio to panel struct only when panel-ic is rm692e5*/
-	if (!strcmp("rm692e5 amoled fhd+ 120hz cmd mode dsi visionox panel", panel->name)) {
-		if (bl_lvl == panel->bl_config.bl_hbm_level) {
-			panel->bl_config.te_gpio = dsi_display->disp_te_gpio;
-		}
 	}
 
 	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
@@ -1266,7 +1258,6 @@ int dsi_display_set_power(struct drm_connector *connector,
 				DSI_WARN("failed to set load for lp1 state\n");
 		}
 		rc = dsi_panel_set_lp1(display->panel);
-		rm692e5_aod_flag = 1;
 		break;
 	case SDE_MODE_DPMS_LP2:
 		rc = dsi_panel_set_lp2(display->panel);
@@ -1281,7 +1272,6 @@ int dsi_display_set_power(struct drm_connector *connector,
 		if ((display->panel->power_mode == SDE_MODE_DPMS_LP1) ||
 			(display->panel->power_mode == SDE_MODE_DPMS_LP2))
 			rc = dsi_panel_set_nolp(display->panel);
-		rm692e5_aod_flag = 0;
 		break;
 	case SDE_MODE_DPMS_OFF:
 	default:
@@ -2730,7 +2720,7 @@ error:
 	return rc;
 }
 
-#ifdef CONFIG_DEEPSLEEP
+#if defined(CONFIG_DEEPSLEEP) || defined(CONFIG_HIBERNATION)
 int dsi_display_unset_clk_src(struct dsi_display *display)
 {
 	int rc = 0;
@@ -6085,7 +6075,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 			DSI_WARN("panel_node %s not found\n", boot_disp->name);
 	} else {
 		panel_node = of_parse_phandle(node,
-				"qcom,dsi-dummy-panel", 0);
+				"qcom,dsi-default-panel", 0);
 		if (!panel_node)
 			DSI_WARN("default panel not found\n");
 	}
@@ -7384,6 +7374,10 @@ int dsi_display_validate_mode_change(struct dsi_display *display,
 					cur_mode->timing.v_front_porch,
 					adj_mode->timing.v_front_porch);
 			}
+			if (cur_mode->timing.refresh_rate != adj_mode->timing.refresh_rate) {
+				WRITE_ONCE(cur_refresh_rate, adj_mode->timing.refresh_rate);
+				DSI_DEBUG("cur_refresh_rate set to %d\n", adj_mode->timing.refresh_rate);
+			}
 		}
 
 		/* dynamic clk change use case */
@@ -7519,7 +7513,6 @@ int dsi_display_set_mode(struct dsi_display *display,
 			timing.h_active, timing.v_active, timing.refresh_rate);
 	SDE_EVT32(adj_mode.priv_info->mdp_transfer_time_us,
 			timing.h_active, timing.v_active, timing.refresh_rate);
-	current_refresh_rate = timing.refresh_rate;
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
 error:
@@ -8331,6 +8324,11 @@ static void dsi_display_panel_id_notification(struct dsi_display *display)
 	}
 }
 
+unsigned int dsi_panel_get_refresh_rate(void)
+{
+	return READ_ONCE(cur_refresh_rate);
+}
+
 int dsi_display_enable(struct dsi_display *display)
 {
 	int rc = 0;
@@ -8372,6 +8370,8 @@ int dsi_display_enable(struct dsi_display *display)
 	mutex_lock(&display->display_lock);
 
 	mode = display->panel->cur_mode;
+
+	WRITE_ONCE(cur_refresh_rate, mode->timing.refresh_rate);
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
 		rc = dsi_panel_post_switch(display->panel);

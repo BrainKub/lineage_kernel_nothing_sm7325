@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -457,13 +457,13 @@ struct sde_crtc_state {
 	uint32_t num_dim_layers;
 	uint32_t cwb_enc_mask;
 	struct sde_hw_dim_layer dim_layer[SDE_MAX_DIM_LAYERS];
-	struct sde_hw_dim_layer *fod_dim_layer;
 	uint32_t num_ds;
 	uint32_t num_ds_enabled;
 	struct sde_hw_ds_cfg ds_cfg[SDE_MAX_DS_COUNT];
 	struct sde_hw_scaler3_lut_cfg scl3_lut_cfg;
 
 	struct sde_core_perf_params new_perf;
+	u8 fod_dim_alpha;
 };
 
 enum sde_crtc_irq_state {
@@ -966,5 +966,13 @@ void sde_crtc_reset_sw_state(struct drm_crtc *crtc);
  * @cstate:      Pointer to drm crtc state
  */
 void _sde_crtc_clear_dim_layers_v1(struct drm_crtc_state *state);
+
+bool sde_crtc_is_fod_enabled(struct drm_crtc_state *state);
+
+/**
+ * sde_crtc_cancel_delayed_work - cancel any pending work items for a given crtc
+ * @crtc: Pointer to DRM crtc object
+ */
+void sde_crtc_cancel_delayed_work(struct drm_crtc *crtc);
 
 #endif /* _SDE_CRTC_H_ */
